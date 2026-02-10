@@ -10,6 +10,7 @@ import {
   DollarSign,
   Activity,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -47,15 +48,25 @@ const generatePeriodData = (basePrice: number, change: number, points: number): 
 const StockDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
   const { stocks } = useLivePrices();
-  const stock = stocks.find((s) => s.symbol === symbol) || pxsStocks.find((s) => s.symbol === symbol);
   const marketStatus = getMarketStatus();
   const [period, setPeriod] = useState<Period>("1M");
+
+  // Always look up from static mock data first (instant, never null for valid symbols),
+  // then overlay with live data when available
+  const staticStock = useMemo(
+    () => pxsStocks.find((s) => s.symbol === symbol),
+    [symbol]
+  );
+  const liveStock = useMemo(
+    () => stocks.find((s) => s.symbol === symbol),
+    [stocks, symbol]
+  );
+  const stock = liveStock || staticStock;
 
   const chartData = useMemo(() => {
     if (!stock) return [];
     const points = PERIOD_POINTS[period];
     if (period === "1D") {
-      // For 1D, use existing chartData padded/trimmed to ~12 points
       const base = stock.chartData;
       if (base.length >= points) return base.slice(-points);
       return generatePeriodData(stock.price, stock.change, points);
@@ -65,15 +76,21 @@ const StockDetail = () => {
 
   if (!stock) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Stock not found</h1>
-          <Link to="/">
-            <Button>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Markets
-            </Button>
-          </Link>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Stock not found</h1>
+            <p className="text-muted-foreground mb-6">
+              Could not find stock with symbol "{symbol}"
+            </p>
+            <Link to="/">
+              <Button>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Markets
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
