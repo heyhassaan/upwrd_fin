@@ -1,15 +1,34 @@
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, Wifi, WifiOff } from "lucide-react";
 import { marketIndices, getMarketStatus } from "@/data/stocks";
+import { MarketIndex } from "@/hooks/use-live-prices";
 
-export const MarketOverview = () => {
+interface MarketOverviewProps {
+  liveIndices?: MarketIndex[];
+  isLive?: boolean;
+  lastUpdated?: Date | null;
+}
+
+export const MarketOverview = ({
+  liveIndices,
+  isLive = false,
+  lastUpdated,
+}: MarketOverviewProps) => {
   const marketStatus = getMarketStatus();
 
-  const indices = [
-    { name: "KSE-100", ...marketIndices.kse100 },
-    { name: "KSE-30", ...marketIndices.kse30 },
-    { name: "KMI-30", ...marketIndices.kmi30 },
-  ];
+  // Use live indices if available, otherwise fall back to hardcoded
+  const indices: MarketIndex[] =
+    liveIndices && liveIndices.length > 0
+      ? liveIndices
+      : [
+          { name: "KSE-100", ...marketIndices.kse100 },
+          { name: "KSE-30", ...marketIndices.kse30 },
+          { name: "KMI-30", ...marketIndices.kmi30 },
+        ];
+
+  const timeString = lastUpdated
+    ? lastUpdated.toLocaleTimeString("en-PK")
+    : new Date().toLocaleTimeString("en-PK");
 
   return (
     <section className="py-8">
@@ -32,9 +51,14 @@ export const MarketOverview = () => {
               PSX: 9:30 AM - 3:30 PM PKT
             </span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            Last updated: {new Date().toLocaleTimeString('en-PK')}
-          </span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isLive ? (
+              <Wifi className="w-4 h-4 text-gain" />
+            ) : (
+              <WifiOff className="w-4 h-4" />
+            )}
+            <span>{isLive ? "Live" : "Delayed"} · {timeString}</span>
+          </div>
         </motion.div>
 
         {/* Indices Cards */}
@@ -53,7 +77,9 @@ export const MarketOverview = () => {
                     {index.name}
                   </h3>
                   <p className="text-2xl font-bold mt-1">
-                    {index.value.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    {index.value.toLocaleString("en-PK", {
+                      minimumFractionDigits: 2,
+                    })}
                   </p>
                 </div>
                 <div
@@ -76,7 +102,10 @@ export const MarketOverview = () => {
               </div>
               <div className="mt-2 text-sm text-muted-foreground">
                 {index.change >= 0 ? "+" : ""}
-                {index.change.toLocaleString('en-PK', { minimumFractionDigits: 2 })} pts
+                {index.change.toLocaleString("en-PK", {
+                  minimumFractionDigits: 2,
+                })}{" "}
+                pts
               </div>
             </motion.div>
           ))}

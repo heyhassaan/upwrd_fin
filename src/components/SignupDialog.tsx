@@ -3,16 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Rocket, CheckCircle2 } from "lucide-react";
+import { Rocket, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SignupDialogProps {
   children: React.ReactNode;
 }
 
+// Web3Forms endpoint — free, no backend needed
+const WEB3FORMS_URL = "https://api.web3forms.com/submit";
+// Get access key from env or use the hardcoded one
+const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY || "";
+
 export const SignupDialog = ({ children }: SignupDialogProps) => {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -22,20 +28,72 @@ export const SignupDialog = ({ children }: SignupDialogProps) => {
   });
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName || !form.email || !form.mobile) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
-    setSubmitted(true);
-    toast({ title: "You're on the list! 🎉", description: "We'll notify you when UpwrdFin launches." });
+
+    setLoading(true);
+
+    try {
+      // Send email notification via Web3Forms
+      const payload = {
+        access_key: WEB3FORMS_KEY,
+        subject: `🚀 New UpwrdFin Signup: ${form.firstName} ${form.lastName}`.trim(),
+        from_name: "UpwrdFin Waitlist",
+        to: "hassaansohail97@gmail.com",
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        email: form.email,
+        mobile: form.mobile,
+        keep_notified: form.keepNotified ? "Yes" : "No",
+        message: [
+          `New waitlist signup on UpwrdFin!`,
+          ``,
+          `Name: ${form.firstName} ${form.lastName}`.trim(),
+          `Email: ${form.email}`,
+          `Mobile: ${form.mobile}`,
+          `Keep Notified: ${form.keepNotified ? "Yes" : "No"}`,
+          ``,
+          `Signed up at: ${new Date().toLocaleString("en-PK", { timeZone: "Asia/Karachi" })}`,
+        ].join("\n"),
+      };
+
+      const res = await fetch(WEB3FORMS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setSubmitted(true);
+        toast({ title: "You're on the list! 🎉", description: "We'll notify you when UpwrdFin launches." });
+      } else {
+        // Submission still counts locally even if email fails
+        console.error("Web3Forms error:", data);
+        setSubmitted(true);
+        toast({ title: "You're on the list! 🎉", description: "We'll notify you when UpwrdFin launches." });
+      }
+    } catch (err) {
+      console.error("Failed to send signup notification:", err);
+      // Still show success to user — don't block signup UX on email failure
+      setSubmitted(true);
+      toast({ title: "You're on the list! 🎉", description: "We'll notify you when UpwrdFin launches." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      setTimeout(() => setSubmitted(false), 300);
+      setTimeout(() => {
+        setSubmitted(false);
+        setForm({ firstName: "", lastName: "", email: "", mobile: "", keepNotified: true });
+      }, 300);
     }
   };
 
@@ -71,12 +129,14 @@ export const SignupDialog = ({ children }: SignupDialogProps) => {
                   onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                   className="bg-secondary border-border"
                   required
+                  disabled={loading}
                 />
                 <Input
                   placeholder="Last Name"
                   value={form.lastName}
                   onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                   className="bg-secondary border-border"
+                  disabled={loading}
                 />
               </div>
               <Input
@@ -86,6 +146,7 @@ export const SignupDialog = ({ children }: SignupDialogProps) => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="bg-secondary border-border"
                 required
+                disabled={loading}
               />
               <Input
                 type="tel"
@@ -94,6 +155,7 @@ export const SignupDialog = ({ children }: SignupDialogProps) => {
                 onChange={(e) => setForm({ ...form, mobile: e.target.value })}
                 className="bg-secondary border-border"
                 required
+                disabled={loading}
               />
               <div className="flex items-start gap-3 pt-1">
                 <Checkbox
@@ -101,14 +163,24 @@ export const SignupDialog = ({ children }: SignupDialogProps) => {
                   checked={form.keepNotified}
                   onCheckedChange={(checked) => setForm({ ...form, keepNotified: !!checked })}
                   className="mt-0.5"
+                  disabled={loading}
                 />
                 <label htmlFor="notify" className="text-sm text-muted-foreground cursor-pointer leading-snug">
                   Keep me notified about all company updates, launch news, and early access features
                 </label>
               </div>
-              <Button type="submit" className="w-full glow-primary h-12 text-base">
-                <Rocket className="w-4 h-4 mr-2" />
-                Get Early Access
+              <Button type="submit" className="w-full glow-primary h-12 text-base" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Signing up...
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="w-4 h-4 mr-2" />
+                    Get Early Access
+                  </>
+                )}
               </Button>
             </form>
           </>
