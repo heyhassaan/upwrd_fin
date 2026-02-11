@@ -88,7 +88,7 @@ export const StockList = ({ stocks, isLive, lastUpdated }: StockListProps) => {
               {stocks.length} stocks • {gainersCount} gainers • {losersCount} losers
               <span className={`ml-2 inline-flex items-center gap-1 text-xs ${isLive ? "text-gain" : "text-primary"}`}>
                 <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isLive ? "bg-gain" : "bg-primary"}`} />
-                {isLive ? "Live PSX Data" : "Simulated"}
+                {isLive ? "Live PSX Data" : "Connecting..."}
               </span>
               {lastUpdated && (
                 <span className="ml-2 text-xs text-muted-foreground">
